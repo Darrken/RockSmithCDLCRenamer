@@ -60,21 +60,21 @@ namespace DLCRenamer
 					if (att == null) continue;
 
 					var newFileName = att.ArtistNameSort.GetValidName(true, true).Replace(" ", "-") + "_" +
-					                  att.SongNameSort.GetValidName(true, true).Replace(" ", "-");
+					                  att.SongNameSort.GetValidName(true, true).Replace(" ", "-") + fileEnd;
 
 					var artist = att.ArtistName.GetValidName(true, true).Replace(" ", "-");
 					var song = att.SongName.GetValidName(true, true).Replace(" ", "-");
 
 					try
 					{
-						File.Move(fileName, newFileName + fileEnd);
+						File.Move(fileName, newFileName);
 						Console.WriteLine(fileName + @": " + newFileName);
 					}
 					catch (IOException ex)
 					{
 						if (!ex.Message.Contains("Cannot create a file when that file already exists")) continue;
 
-						newFileName = FileNameHelper.GetNextFileName(newFileName + fileEnd);
+						newFileName = FileNameHelper.GetNextFileName(newFileName);
 						try
 						{
 							File.Move(fileName, newFileName);
@@ -95,10 +95,10 @@ namespace DLCRenamer
 						Console.ReadLine();
 					}
 
-					writer.WriteLine("Filename: " + fileName);
-					writer.WriteLine("	New Filename: " + newFileName);
-					writer.WriteLine("	      Artist: " + artist);
-					writer.WriteLine("	        Song: " + song);
+					writer.WriteLine("Old Filename: " + fileName);
+					writer.WriteLine("New Filename: " + newFileName);
+					writer.WriteLine("      Artist: " + artist);
+					writer.WriteLine("        Song: " + song);
 				}
 			}
 		}
