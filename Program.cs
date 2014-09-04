@@ -110,6 +110,7 @@ namespace DLCRenamer
 			return fileNames;
 		}
 
+		//from: http://stackoverflow.com/questions/329355/cannot-delete-directory-with-directory-deletepath-true
 		public static void DeleteDirectory(string targetDir)
 		{
 			var files = Directory.GetFiles(targetDir);
@@ -130,6 +131,7 @@ namespace DLCRenamer
 		}
 	}
 
+	//from: http://social.msdn.microsoft.com/Forums/vstudio/en-US/feb18912-d1ae-46e0-b8aa-b739f5d2a86d/file-rename-algorithm
 	public static class FileNameHelper
 	{
 		public static string GetNextFileName(string baseFileName)
