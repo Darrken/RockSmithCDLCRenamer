@@ -38,8 +38,9 @@ song "A Forest", here's what it might look like:<br>
   New filename: Cure_Forest_v1_DD_p.psarc<br>
 
 Note that I try to preserve any existing "version" in the filename by keeping anything from _v# to the end of the
-filename.  And now you have a better, sortable, reliable filename.  If the Sort metadata fields are wrong, i.e. 
-they start with "A " or "The ", you'll see that reflected in the filename.
+filename.  (I couldn't figure out how to determine from metadata whether a song had Dynamic Difficulty or not, so you 
+might end up losing some of the "DD" in filenames if they came before the _v#.)  And now you have a better, sortable, reliable filename.  
 
+If the Sort metadata fields are wrong, i.e. they start with "A " or "The ", you'll see that reflected in the filename. 
 You can fix metadata by using the "Import Package" button in the Custom Song Creator Toolkit, editing the metadata, 
-and clicking the "Generate" button.
+and clicking the "Generate" button to create a new, fixed file.
