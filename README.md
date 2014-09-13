@@ -27,7 +27,7 @@ The DLC files store two sets of data for Song and Artist:<br>
 
 The Sort fields determine where the song/artist appears within the game when you're browsing through the list of songs.
 For this reason I use the Sort fields when renaming the files.  If, for example, you had a DLC file for The Cure
-song A Forest, here's what it might look like:<br>
+song "A Forest", here's what it might look like:<br>
   <strong>Metadata</strong><br>
   Song Title: A Forest<br>
   Song Title Sort: Forest<br>
