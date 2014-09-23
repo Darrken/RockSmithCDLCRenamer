@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using RocksmithToolkitLib.DLCPackage;
 using RocksmithToolkitLib.DLCPackage.Manifest;
 using RocksmithToolkitLib.Extensions;
@@ -11,27 +12,41 @@ namespace DLCRenamer
 {
 	class Program
 	{
-		static void Main(string[] args)
+		private static string _artistSongSeparator = "_";
+		private static string _spaceSeparator = "-";
+		private static bool _useMetadataVersion = false;
+		private static bool _useMetadataDd = false;
+
+		static void Main()
 		{
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
 
+			GetOptions();
+
 			var fileNames = GetFileList();
 			ProcessFiles(fileNames);
+			Console.WriteLine();
+			Console.WriteLine(@"Done! Press any key to exit.");
+			Console.ReadKey();
 		}
 
-		static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+		static void GetOptions()
 		{
-			var dllName = args.Name.Contains(',') ? args.Name.Substring(0, args.Name.IndexOf(',')) : args.Name.Replace(".dll", "");
+			if (!File.Exists("DLCRenamerOptions.txt")) return;
 
-			dllName = dllName.Replace(".", "_");
+			var options = File.ReadAllLines("DLCRenamerOptions.txt");
 
-			if (dllName.EndsWith("_resources")) return null;
-
-			var rm = new System.Resources.ResourceManager(typeof(Program).Namespace + ".Properties.Resources", Assembly.GetExecutingAssembly());
-
-			var bytes = (byte[])rm.GetObject(dllName);
-
-			return Assembly.Load(bytes);
+			foreach (var option in options.Where(line => !line.StartsWith("#")))
+			{
+				if (option.Contains("Artist-Song-Separator:"))
+					_artistSongSeparator = option.Replace("Artist-Song-Separator:", "").Trim().Replace("\"", "");
+				if (option.Contains("Space-Character:"))
+					_spaceSeparator = option.Replace("Space-Character:", "").Trim().Replace("\"", "");
+				if (option.Contains("Use-Metadata-Version:") && option.Contains("true"))
+					_useMetadataVersion = true;
+				if (option.Contains("Use-Metadata-DD:") && option.Contains("true"))
+					_useMetadataDd = true;
+			}
 		}
 
 		private static void ProcessFiles(IEnumerable<string> fileNames)
@@ -42,28 +57,34 @@ namespace DLCRenamer
 				foreach (var fileName in fileNames)
 				{
 					if (!fileName.IsValidPSARC()) continue;
-
-					var fileEnd = "_p.psarc";
-					var versionIndex = fileName.LastIndexOf("_v", StringComparison.Ordinal);
-					if (versionIndex > 0)
-						fileEnd = fileName.Substring(versionIndex);
+					if (fileName.Contains("rs1compat")) continue;
 
 					var unpackedDir = Packer.Unpack(fileName, dir, false, false, false);
 
-					Attributes2014 att = null;
+					Attributes2014 attrs = null;
 					var jsonFiles = Directory.GetFiles(unpackedDir, String.Format("*.json"), SearchOption.AllDirectories);
 					if (jsonFiles.Length > 0 && !String.IsNullOrEmpty(jsonFiles[0]))
-						att = Manifest2014<Attributes2014>.LoadFromFile(jsonFiles[0]).Entries.ToArray()[0].Value.ToArray()[0].Value;
+						attrs = Manifest2014<Attributes2014>.LoadFromFile(jsonFiles[0]).Entries.ToArray()[0].Value.ToArray()[0].Value;
+
+					if (attrs == null) continue;
+
+					var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(fileName);
+
+					var dynamicDifficulty = _useMetadataDd
+						? GetDynamicDifficultyFromMetadata(attrs)
+						: GetDynamicDifficultyFromFileName(fileName);
+
+					var newFileName = attrs.ArtistNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) + 
+											_artistSongSeparator +
+											attrs.SongNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) + 
+											version + 
+											dynamicDifficulty + 
+											"_p.psarc";
+
+					var artist = attrs.ArtistName;
+					var song = attrs.SongName;
 
 					DeleteDirectory(unpackedDir);
-
-					if (att == null) continue;
-
-					var newFileName = att.ArtistNameSort.GetValidName(true, true).Replace(" ", "-") + "_" +
-					                  att.SongNameSort.GetValidName(true, true).Replace(" ", "-") + fileEnd;
-
-					var artist = att.ArtistName.GetValidName(true, true).Replace(" ", "-");
-					var song = att.SongName.GetValidName(true, true).Replace(" ", "-");
 
 					try
 					{
@@ -103,6 +124,46 @@ namespace DLCRenamer
 			}
 		}
 
+		private static string GetVersionFromMetadata(string unpackedDir)
+		{
+			var version = "1";
+
+			if (!File.Exists(unpackedDir + "\\toolkit.version")) 
+				return _artistSongSeparator + "v" + version;
+
+			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
+			foreach (var line in lines.Where(line => line.Contains("Package Version")))
+			{
+				version = line.Replace("Package Version:", "").Trim().Replace(".", "_");
+			}
+
+			return _artistSongSeparator + "v" + version;
+		}
+
+		private static string GetVersionFromFileName(string fileName)
+		{
+			var version = "1";
+
+			var regex = new Regex(@"(_v+[0-9])([_.][^A-z])?");
+			var match = regex.Match(fileName);
+			if (match.Success)
+			{
+				version = match.Value.Replace("_v", "");
+			}
+
+			return _artistSongSeparator + "v" + version;
+		}
+
+		private static string GetDynamicDifficultyFromFileName(string fileName)
+		{
+			return fileName.Contains("_DD") ? _artistSongSeparator + "DD" : string.Empty;
+		}
+
+		private static string GetDynamicDifficultyFromMetadata(Attributes2014 attr)
+		{
+			return attr.MaxPhraseDifficulty > 0 ? _artistSongSeparator + "DD" : string.Empty;
+		}
+
 		private static IEnumerable<string> GetFileList()
 		{
 			var dir = Directory.GetCurrentDirectory();
@@ -111,23 +172,40 @@ namespace DLCRenamer
 		}
 
 		//from: http://stackoverflow.com/questions/329355/cannot-delete-directory-with-directory-deletepath-true
-		public static void DeleteDirectory(string targetDir)
+		public static void DeleteDirectory(string path)
 		{
-			var files = Directory.GetFiles(targetDir);
-			var dirs = Directory.GetDirectories(targetDir);
-
-			foreach (var file in files)
+			foreach (var directory in Directory.GetDirectories(path))
 			{
-				File.SetAttributes(file, FileAttributes.Normal);
-				File.Delete(file);
+				DeleteDirectory(directory);
 			}
 
-			foreach (var dir in dirs)
+			try
 			{
-				DeleteDirectory(dir);
+				Directory.Delete(path, true);
 			}
+			catch (IOException)
+			{
+				Directory.Delete(path, true);
+			}
+			catch (UnauthorizedAccessException)
+			{
+				Directory.Delete(path, true);
+			}
+		}
 
-			Directory.Delete(targetDir, false);
+		static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+		{
+			var dllName = args.Name.Contains(',') ? args.Name.Substring(0, args.Name.IndexOf(',')) : args.Name.Replace(".dll", "");
+
+			dllName = dllName.Replace(".", "_");
+
+			if (dllName.EndsWith("_resources")) return null;
+
+			var rm = new System.Resources.ResourceManager(typeof(Program).Namespace + ".Properties.Resources", Assembly.GetExecutingAssembly());
+
+			var bytes = (byte[])rm.GetObject(dllName);
+
+			return Assembly.Load(bytes);
 		}
 	}
 
