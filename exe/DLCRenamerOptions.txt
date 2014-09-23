@@ -1,0 +1,19 @@
+﻿Artist-Song-Separator: "_"
+Space-Character: "-"
+Use-Metadata-Version: false
+Use-Metadata-DD: false
+
+# The Artist-Song-Separator sets the character between Artist - Song - Version - DD
+#  ex: Cure_Burn_v1_DD_p.psarc
+
+# The Space-Character sets the character used for spaces in an Artist name or Song title
+#  ex: Arctic-Monkeys_Do-I-Wanna-Know_v1_p.psarc
+
+# Use-Metadata-Version: 
+#  If true, this will get the version number from the file metadata if it exists
+#   (many song authors at this time do not fill in the version metadata, so you may end up with a lot of "v1" in your filenames)
+#  If false, the renamer will attempt to get the version in the existing filename
+
+# Use-Metadata-DD:
+#  If true, the renamer will attempt to determine whether the song supports Dynamic Difficulty from file metadata.  May not be 100% accurate.
+#  If false, the renamer will just look for "_DD" in the existing filename
