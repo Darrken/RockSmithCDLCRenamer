@@ -48,4 +48,6 @@ and clicking the "Generate" button to create a new, fixed file.
 Options
 =======
 
-You can modify the DLCRenamerOptions.txt file to customize the separators in the filename.  For example, you may prefer an actual space instead of the "_" character.  (The filename must end with _p.psarc, however.)  You can also set whether the program attempts to get version info and Dynamic Difficulty flag from the metadata or from the old filename.  Many DLC authors don't update the Version metadata tag in the file at the moment, so you may lose that info if you choose to use that method.  I think the DD detection works well, but I'm not 100% positive.  I'm just checking to see if the MaxPhraseDifficulty is greater than 0 to determine whether the song uses Dynamic Difficulty.
+You can modify the DLCRenamerOptions.txt file to customize the separators in the filename.  For example, you may prefer an actual space instead of the "_" character.  You can also set whether the program attempts to get the Version info and Dynamic Difficulty flag from the metadata or from the old filename.  Many DLC authors don't update the Version metadata tag in the file at the moment, so you may lose that info if you choose to use that method (you'll end up with a lot of "v1"s).  I think the DD detection works well, but I'm not 100% positive.  I'm just checking to see if the MaxPhraseDifficulty is greater than 0 to determine whether the song uses Dynamic Difficulty.
+
+<strong>I highly recommend backing up first, or experimenting on a copied subset of your files!</strong>
