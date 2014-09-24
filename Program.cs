@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using RocksmithToolkitLib.DLCPackage;
 using RocksmithToolkitLib.DLCPackage.Manifest;
 using RocksmithToolkitLib.Extensions;
@@ -147,11 +148,11 @@ namespace DLCRenamer
 		{
 			var version = "1";
 
-			var regex = new Regex(@"([_-][vV]+[0-9])([_.-][0-9])?");
+			var regex = new Regex(@"([vV]+[0-9])([_.-][0-9])?");
 			var match = regex.Match(fileName);
 			if (match.Success)
 			{
-				version = match.Value.ToLower().Replace("_v", "");
+				version = match.Value.ToLower().Replace("v", "");
 			}
 
 			return GetFormattedVersionString(version);
@@ -185,24 +186,27 @@ namespace DLCRenamer
 		}
 
 		//from: http://stackoverflow.com/questions/329355/cannot-delete-directory-with-directory-deletepath-true
-		public static void DeleteDirectory(string path)
+		private static void DeleteDirectory(string destinationDir)
 		{
-			foreach (var directory in Directory.GetDirectories(path))
+			const int magicDust = 10;
+			for (var gnomes = 1; gnomes <= magicDust; gnomes++)
 			{
-				DeleteDirectory(directory);
-			}
-
-			try
-			{
-				Directory.Delete(path, true);
-			}
-			catch (IOException)
-			{
-				Directory.Delete(path, true);
-			}
-			catch (UnauthorizedAccessException)
-			{
-				Directory.Delete(path, true);
+				try
+				{
+					Directory.Delete(destinationDir, true);
+				}
+				catch (DirectoryNotFoundException)
+				{
+					return;  // good!
+				}
+				catch (IOException)
+				{ 
+					// System.IO.IOException: The directory is not empty
+					//System.Diagnostics.Debug.WriteLine("Gnomes prevent deletion of {0}! Applying magic dust, attempt #{1}.", destinationDir, gnomes);
+					Thread.Sleep(50);
+					continue;
+				}
+				return;
 			}
 		}
 
