@@ -144,7 +144,7 @@ namespace DLCRenamer
 		{
 			var version = "1";
 
-			var regex = new Regex(@"(_v+[0-9])([_.][^A-z])?");
+			var regex = new Regex(@"([_-][vV]+[0-9])([_.-][0-9])?");
 			var match = regex.Match(fileName);
 			if (match.Success)
 			{
