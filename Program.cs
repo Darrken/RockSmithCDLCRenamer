@@ -148,7 +148,7 @@ namespace DLCRenamer
 			var match = regex.Match(fileName);
 			if (match.Success)
 			{
-				version = match.Value.Replace("_v", "");
+				version = match.Value.ToLower().Replace("_v", "");
 			}
 
 			return _artistSongSeparator + "v" + version;
