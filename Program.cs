@@ -15,7 +15,8 @@ namespace DLCRenamer
 		private static string _artistSongSeparator = "_";
 		private static string _spaceSeparator = "-";
 		private static bool _useMetadataVersion = false;
-		private static bool _useMetadataDd = false;
+		private static bool _useMetadataDd = true;
+		private static bool _padVersion = false;
 
 		static void Main()
 		{
@@ -46,6 +47,8 @@ namespace DLCRenamer
 					_useMetadataVersion = true;
 				if (option.Contains("Use-Metadata-DD:") && option.Contains("true"))
 					_useMetadataDd = true;
+				if (option.Contains("Zero-Pad-Version:") && option.Contains("true"))
+					_padVersion = true;
 			}
 		}
 
@@ -137,7 +140,7 @@ namespace DLCRenamer
 				version = line.Replace("Package Version:", "").Trim().Replace(".", "_");
 			}
 
-			return _artistSongSeparator + "v" + version;
+			return GetFormattedVersionString(version);
 		}
 
 		private static string GetVersionFromFileName(string fileName)
@@ -149,6 +152,16 @@ namespace DLCRenamer
 			if (match.Success)
 			{
 				version = match.Value.ToLower().Replace("_v", "");
+			}
+
+			return GetFormattedVersionString(version);
+		}
+
+		private static string GetFormattedVersionString(string version)
+		{
+			if (_padVersion && version.Length == 1)
+			{
+				version = version + "_0";
 			}
 
 			return _artistSongSeparator + "v" + version;

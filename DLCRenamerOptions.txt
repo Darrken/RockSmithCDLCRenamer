@@ -2,6 +2,7 @@
 Space-Character: "-"
 Use-Metadata-Version: false
 Use-Metadata-DD: false
+Zero-Pad-Version: false
 
 # The Artist-Song-Separator sets the character between Artist - Song - Version - DD
 #  ex: Cure_Burn_v1_DD_p.psarc
@@ -17,3 +18,6 @@ Use-Metadata-DD: false
 # Use-Metadata-DD:
 #  If true, the renamer will attempt to determine whether the song supports Dynamic Difficulty from file metadata.  May not be 100% accurate.
 #  If false, the renamer will just look for "_DD" in the existing filename
+
+# Zero-Pad-Version:
+# If true, "v1" will become "v1_0"
