@@ -220,7 +220,7 @@ namespace DLCRenamer
 		private static IEnumerable<string> GetFileList()
 		{
 			var dir = Directory.GetCurrentDirectory();
-			var fileNames = Directory.GetFiles(dir, "*.psarc").Select(Path.GetFileName);
+			var fileNames = Directory.GetFiles(dir, "*_p.psarc").Select(Path.GetFileName);
 			return fileNames;
 		}
 
