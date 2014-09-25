@@ -44,11 +44,11 @@ namespace DLCRenamer
 					_artistSongSeparator = option.Replace("Artist-Song-Separator:", "").Trim().Replace("\"", "");
 				if (option.Contains("Space-Character:"))
 					_spaceSeparator = option.Replace("Space-Character:", "").Trim().Replace("\"", "");
-				if (option.Contains("Use-Metadata-Version:") && option.Contains("true"))
+				if (option.Contains("Use-Metadata-Version:") && option.ToLower().Contains("true"))
 					_useMetadataVersion = true;
-				if (option.Contains("Use-Metadata-DD:") && option.Contains("true"))
+				if (option.Contains("Use-Metadata-DD:") && option.ToLower().Contains("true"))
 					_useMetadataDd = true;
-				if (option.Contains("Zero-Pad-Version:") && option.Contains("true"))
+				if (option.Contains("Zero-Pad-Version:") && option.ToLower().Contains("true"))
 					_padVersion = true;
 			}
 		}
@@ -56,7 +56,7 @@ namespace DLCRenamer
 		private static void ProcessFiles(IEnumerable<string> fileNames)
 		{
 			var dir = Directory.GetCurrentDirectory();
-			using (var writer = new StreamWriter("Songs.txt"))
+			using (var writer = new StreamWriter("Songs-Renamed-" + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + ".txt"))
 			{
 				foreach (var fileName in fileNames)
 				{
@@ -88,12 +88,23 @@ namespace DLCRenamer
 					var artist = attrs.ArtistName;
 					var song = attrs.SongName;
 
+					writer.WriteLine("Old Filename: " + fileName);
+					writer.WriteLine("New Filename: " + newFileName);
+					writer.WriteLine("      Artist: " + artist);
+					writer.WriteLine(" Artist Sort: " + attrs.ArtistNameSort);
+					writer.WriteLine("        Song: " + song);
+					writer.WriteLine("   Song Sort: " + attrs.SongNameSort);
+					writer.WriteLine("Meta Version: " + GetUnformattedVersionFromMetadata(unpackedDir));
+					writer.WriteLine("     Meta DD: " + (attrs.MaxPhraseDifficulty > 0));
+					writer.WriteLine("      Author: " + GetAuthorFromMetadata(unpackedDir));
+					writer.WriteLine();
+					
 					DeleteDirectory(unpackedDir);
 
 					try
 					{
 						File.Move(fileName, newFileName);
-						Console.WriteLine(fileName + @": " + newFileName);
+						Console.WriteLine(fileName + @" -> " + newFileName);
 					}
 					catch (IOException ex)
 					{
@@ -106,7 +117,7 @@ namespace DLCRenamer
 						}
 						catch (Exception exception)
 						{
-							Console.WriteLine(fileName + @": " + newFileName);
+							Console.WriteLine(fileName + @" -> " + newFileName);
 							Console.WriteLine(exception.Message);
 							Console.WriteLine(exception.InnerException);
 							Console.ReadLine();
@@ -114,18 +125,46 @@ namespace DLCRenamer
 					}
 					catch (Exception ex)
 					{
-						Console.WriteLine(fileName + @": " + newFileName);
+						Console.WriteLine(fileName + @" -> " + newFileName);
 						Console.WriteLine(ex.Message);
 						Console.WriteLine(ex.InnerException);
 						Console.ReadLine();
 					}
 
-					writer.WriteLine("Old Filename: " + fileName);
-					writer.WriteLine("New Filename: " + newFileName);
-					writer.WriteLine("      Artist: " + artist);
-					writer.WriteLine("        Song: " + song);
 				}
 			}
+		}
+
+		private static string GetAuthorFromMetadata(string unpackedDir)
+		{
+			var author = string.Empty;
+
+			if (!File.Exists(unpackedDir + "\\toolkit.version"))
+				return author;
+
+			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
+			foreach (var line in lines.Where(line => line.Contains("Package Author")))
+			{
+				author = line.Replace("Package Author:", "").Trim();
+			}
+
+			return author;
+		}
+
+		private static string GetUnformattedVersionFromMetadata(string unpackedDir)
+		{
+			var version = string.Empty;
+
+			if (!File.Exists(unpackedDir + "\\toolkit.version"))
+				return version;
+
+			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
+			foreach (var line in lines.Where(line => line.Contains("Package Version")))
+			{
+				version = line.Replace("Package Version:", "").Trim();
+			}
+
+			return version;
 		}
 
 		private static string GetVersionFromMetadata(string unpackedDir)
@@ -210,6 +249,7 @@ namespace DLCRenamer
 			}
 		}
 
+		//from: http://stackoverflow.com/questions/189549/embedding-dlls-in-a-compiled-executable
 		static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
 		{
 			var dllName = args.Name.Contains(',') ? args.Name.Substring(0, args.Name.IndexOf(',')) : args.Name.Replace(".dll", "");
