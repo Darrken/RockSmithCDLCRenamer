@@ -4,6 +4,7 @@ Use-Metadata-Version: false
 Use-Metadata-DD: false
 Zero-Pad-Version: false
 Override-Clean-Name: false
+Include-Subfolders: true
 
 # The Artist-Song-Separator sets the character between Artist - Song - Version - DD
 #  ex: Cure_Burn_v1_DD_p.psarc
@@ -21,7 +22,7 @@ Override-Clean-Name: false
 #  If false, the renamer will just look for "_DD" in the existing filename
 
 # Zero-Pad-Version:
-# If true, "v1" will become "v1_0"
+#  If true, "v1" will become "v1_0"
 
 # Override-Clean-Name:
 #  If true, special characters used in the artist or song title will not be stripped from the filename (except for: \/:*?"<>&|).

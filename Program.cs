@@ -19,6 +19,7 @@ namespace DLCRenamer
 		private static bool _useMetadataDd;
 		private static bool _padVersion;
 		private static bool _overrideCleanName;
+		private static bool _includeSubfolders = true;
 		private static readonly string[] InvalidStrings = {"\\", "/", "?", "*", ":", "\"", "<", ">", "|", "&"};
 
 		static void Main()
@@ -54,20 +55,24 @@ namespace DLCRenamer
 					_padVersion = true;
 				if (option.Contains("Override-Clean-Name:") && option.ToLower().Contains("true"))
 					_overrideCleanName = true;
+				if (option.Contains("Include-Subfolders:") && option.ToLower().Contains("false"))
+					_includeSubfolders = false;
 			}
 		}
 
 		private static void ProcessFiles(IEnumerable<string> fileNames)
 		{
-			var dir = Directory.GetCurrentDirectory();
+			var workingDirectory = Directory.GetCurrentDirectory();
 			using (var writer = new StreamWriter("Songs-Renamed-" + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + ".txt"))
 			{
-				foreach (var fileName in fileNames)
+				foreach (var filePathAndName in fileNames)
 				{
-					if (!fileName.IsValidPSARC()) continue;
-					if (fileName.Contains("rs1compat")) continue;
+					if (!filePathAndName.IsValidPSARC()) continue;
+					if (filePathAndName.Contains("rs1compat")) continue;
 
-					var unpackedDir = Packer.Unpack(fileName, dir, false, false, false);
+					var filePath = Path.GetDirectoryName(filePathAndName) + "\\";
+
+					var unpackedDir = Packer.Unpack(filePathAndName, workingDirectory, false, false, false);
 
 					Attributes2014 attrs = null;
 					var jsonFiles = Directory.GetFiles(unpackedDir, String.Format("*.json"), SearchOption.AllDirectories);
@@ -76,11 +81,11 @@ namespace DLCRenamer
 
 					if (attrs == null) continue;
 
-					var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(fileName);
+					var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(filePathAndName);
 
 					var dynamicDifficulty = _useMetadataDd
 						? GetDynamicDifficultyFromMetadata(attrs)
-						: GetDynamicDifficultyFromFileName(fileName);
+						: GetDynamicDifficultyFromFileName(filePathAndName);
 
 					var newFileName = _overrideCleanName
 						? GetFileNameSafeString(attrs.ArtistNameSort).Replace(" ", _spaceSeparator) +
@@ -99,23 +104,23 @@ namespace DLCRenamer
 					var artist = attrs.ArtistName;
 					var song = attrs.SongName;
 
-					writer.WriteLine("Old Filename: " + fileName);
-					writer.WriteLine("New Filename: " + newFileName);
+					writer.WriteLine("Old Filename: " + filePathAndName);
+					writer.WriteLine("New Filename: " + filePath + newFileName);
 					writer.WriteLine("      Artist: " + artist);
 					writer.WriteLine(" Artist Sort: " + attrs.ArtistNameSort);
 					writer.WriteLine("        Song: " + song);
 					writer.WriteLine("   Song Sort: " + attrs.SongNameSort);
 					writer.WriteLine("Meta Version: " + GetUnformattedVersionFromMetadata(unpackedDir));
 					writer.WriteLine("     Meta DD: " + (attrs.MaxPhraseDifficulty > 0));
-					writer.WriteLine("      Author: " + GetAuthorFromMetadata(unpackedDir));
+					writer.WriteLine("  DLC Author: " + GetAuthorFromMetadata(unpackedDir));
 					writer.WriteLine();
 
 					try
 					{
 						DeleteDirectory(unpackedDir);
 
-						File.Move(fileName, newFileName);
-						Console.WriteLine(fileName + @" -> " + newFileName);
+						File.Move(filePathAndName, filePath + newFileName);
+						Console.WriteLine(Path.GetFileName(filePathAndName) + @" -> " + newFileName);
 					}
 					catch (IOException ex)
 					{
@@ -124,27 +129,27 @@ namespace DLCRenamer
 							newFileName = FileNameHelper.GetNextFileName(newFileName);
 							try
 							{
-								File.Move(fileName, newFileName);
+								File.Move(filePathAndName, filePath + newFileName);
 							}
 							catch (Exception exception)
 							{
-								LogErrorMessage(fileName, newFileName, exception, writer);
+								LogErrorMessage(filePathAndName, newFileName, exception, writer);
 							}
 						}
 						else
 						{
-							LogErrorMessage(fileName, newFileName, ex, writer);
+							LogErrorMessage(filePathAndName, newFileName, ex, writer);
 						}
 					}
 					catch (Exception ex)
 					{
-						LogErrorMessage(fileName, newFileName, ex, writer);
+						LogErrorMessage(filePathAndName, newFileName, ex, writer);
 					}
 				}
 			}
 		}
 
-		private static void LogErrorMessage(string fileName, string newFileName, Exception exception, StreamWriter writer)
+		private static void LogErrorMessage(string fileName, string newFileName, Exception exception, TextWriter writer)
 		{
 			writer.WriteLine("Error encountered!");
 			writer.WriteLine(fileName + @" -> " + newFileName);
@@ -152,7 +157,7 @@ namespace DLCRenamer
 			writer.WriteLine(exception.InnerException);
 
 			Console.WriteLine(@"Error encountered!");
-			Console.WriteLine(fileName + @" -> " + newFileName);
+			Console.WriteLine(Path.GetFileName(fileName) + @" -> " + newFileName);
 			Console.WriteLine(exception.Message);
 			Console.WriteLine(exception.InnerException);
 			Console.WriteLine();
@@ -258,7 +263,9 @@ namespace DLCRenamer
 		private static IEnumerable<string> GetFileList()
 		{
 			var dir = Directory.GetCurrentDirectory();
-			var fileNames = Directory.GetFiles(dir, "*_p.psarc").Select(Path.GetFileName);
+			var fileNames = _includeSubfolders
+				? Directory.GetFiles(dir, "*_p.psarc", SearchOption.AllDirectories)
+				: Directory.GetFiles(dir, "*_p.psarc");
 			return fileNames;
 		}
 
