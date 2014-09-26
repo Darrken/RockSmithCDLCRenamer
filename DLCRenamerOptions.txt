@@ -27,3 +27,6 @@ Include-Subfolders: true
 # Override-Clean-Name:
 #  If true, special characters used in the artist or song title will not be stripped from the filename (except for: \/:*?"<>&|).
 #  Do so at your own risk; the song may not appear in Rocksmith depending on the characters.
+
+# Include-Subfolders:
+#  If true, will search and rename all _p.psarc files in any subfolders present in the working folder.
