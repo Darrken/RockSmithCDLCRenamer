@@ -15,9 +15,11 @@ namespace DLCRenamer
 	{
 		private static string _artistSongSeparator = "_";
 		private static string _spaceSeparator = "-";
-		private static bool _useMetadataVersion = false;
-		private static bool _useMetadataDd = true;
-		private static bool _padVersion = false;
+		private static bool _useMetadataVersion;
+		private static bool _useMetadataDd;
+		private static bool _padVersion;
+		private static bool _overrideCleanName;
+		private static readonly string[] InvalidStrings = {"\\", "/", "?", "*", ":", "\"", "<", ">", "|", "&"};
 
 		static void Main()
 		{
@@ -50,6 +52,8 @@ namespace DLCRenamer
 					_useMetadataDd = true;
 				if (option.Contains("Zero-Pad-Version:") && option.ToLower().Contains("true"))
 					_padVersion = true;
+				if (option.Contains("Override-Clean-Name:") && option.ToLower().Contains("true"))
+					_overrideCleanName = true;
 			}
 		}
 
@@ -78,12 +82,19 @@ namespace DLCRenamer
 						? GetDynamicDifficultyFromMetadata(attrs)
 						: GetDynamicDifficultyFromFileName(fileName);
 
-					var newFileName = attrs.ArtistNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) + 
-											_artistSongSeparator +
-											attrs.SongNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) + 
-											version + 
-											dynamicDifficulty + 
-											"_p.psarc";
+					var newFileName = _overrideCleanName
+						? GetFileNameSafeString(attrs.ArtistNameSort).Replace(" ", _spaceSeparator) +
+						  _artistSongSeparator +
+						  GetFileNameSafeString(attrs.SongNameSort).Replace(" ", _spaceSeparator) +
+						  version +
+						  dynamicDifficulty +
+						  "_p.psarc"
+						: attrs.ArtistNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
+						  _artistSongSeparator +
+						  attrs.SongNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
+						  version +
+						  dynamicDifficulty +
+						  "_p.psarc";
 
 					var artist = attrs.ArtistName;
 					var song = attrs.SongName;
@@ -98,41 +109,68 @@ namespace DLCRenamer
 					writer.WriteLine("     Meta DD: " + (attrs.MaxPhraseDifficulty > 0));
 					writer.WriteLine("      Author: " + GetAuthorFromMetadata(unpackedDir));
 					writer.WriteLine();
-					
-					DeleteDirectory(unpackedDir);
 
 					try
 					{
+						DeleteDirectory(unpackedDir);
+
 						File.Move(fileName, newFileName);
 						Console.WriteLine(fileName + @" -> " + newFileName);
 					}
 					catch (IOException ex)
 					{
-						if (!ex.Message.Contains("Cannot create a file when that file already exists")) continue;
-
-						newFileName = FileNameHelper.GetNextFileName(newFileName);
-						try
+						if (ex.Message.Contains("Cannot create a file when that file already exists"))
 						{
-							File.Move(fileName, newFileName);
+							newFileName = FileNameHelper.GetNextFileName(newFileName);
+							try
+							{
+								File.Move(fileName, newFileName);
+							}
+							catch (Exception exception)
+							{
+								LogErrorMessage(fileName, newFileName, exception, writer);
+							}
 						}
-						catch (Exception exception)
+						else
 						{
-							Console.WriteLine(fileName + @" -> " + newFileName);
-							Console.WriteLine(exception.Message);
-							Console.WriteLine(exception.InnerException);
-							Console.ReadLine();
+							LogErrorMessage(fileName, newFileName, ex, writer);
 						}
 					}
 					catch (Exception ex)
 					{
-						Console.WriteLine(fileName + @" -> " + newFileName);
-						Console.WriteLine(ex.Message);
-						Console.WriteLine(ex.InnerException);
-						Console.ReadLine();
+						LogErrorMessage(fileName, newFileName, ex, writer);
 					}
-
 				}
 			}
+		}
+
+		private static void LogErrorMessage(string fileName, string newFileName, Exception exception, StreamWriter writer)
+		{
+			writer.WriteLine("Error encountered!");
+			writer.WriteLine(fileName + @" -> " + newFileName);
+			writer.WriteLine(exception.Message);
+			writer.WriteLine(exception.InnerException);
+
+			Console.WriteLine(@"Error encountered!");
+			Console.WriteLine(fileName + @" -> " + newFileName);
+			Console.WriteLine(exception.Message);
+			Console.WriteLine(exception.InnerException);
+			Console.WriteLine();
+			Console.WriteLine(@"Press any key to continue.");
+			Console.ReadKey();
+		}
+
+		private static string GetFileNameSafeString(string value)
+		{
+			foreach (var invalidChar in InvalidStrings)
+			{
+				if (value.Contains(invalidChar))
+				{
+					value = value.Replace(invalidChar, "");
+				}
+			}
+
+			return value;
 		}
 
 		private static string GetAuthorFromMetadata(string unpackedDir)

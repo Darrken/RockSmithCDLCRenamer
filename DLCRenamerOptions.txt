@@ -3,6 +3,7 @@ Space-Character: "-"
 Use-Metadata-Version: false
 Use-Metadata-DD: false
 Zero-Pad-Version: false
+Override-Clean-Name: false
 
 # The Artist-Song-Separator sets the character between Artist - Song - Version - DD
 #  ex: Cure_Burn_v1_DD_p.psarc
@@ -21,3 +22,7 @@ Zero-Pad-Version: false
 
 # Zero-Pad-Version:
 # If true, "v1" will become "v1_0"
+
+# Override-Clean-Name:
+#  If true, special characters used in the artist or song title will not be stripped from the filename (except for: \/:*?"<>&|).
+#  Do so at your own risk; the song may not appear in Rocksmith depending on the characters.
