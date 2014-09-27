@@ -13,6 +13,9 @@ namespace DLCRenamer
 {
 	class Program
 	{
+		private const string WorkingFolder = "c:\\temp\\";
+		private static readonly string[] InvalidStrings = { "\\", "/", "?", "*", ":", "\"", "<", ">", "|", "&" };
+
 		private static string _artistSongSeparator = "_";
 		private static string _spaceSeparator = "-";
 		private static bool _useMetadataVersion;
@@ -20,8 +23,7 @@ namespace DLCRenamer
 		private static bool _padVersion;
 		private static bool _overrideCleanName;
 		private static bool _includeSubfolders = true;
-		private static readonly string[] InvalidStrings = {"\\", "/", "?", "*", ":", "\"", "<", ">", "|", "&"};
-
+		
 		static void Main()
 		{
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
@@ -62,7 +64,13 @@ namespace DLCRenamer
 
 		private static void ProcessFiles(IEnumerable<string> fileNames)
 		{
-			var workingDirectory = Directory.GetCurrentDirectory();
+			var cleanupTempFolder = false;
+			if (!Directory.Exists(WorkingFolder))
+			{
+				Directory.CreateDirectory(WorkingFolder);
+				cleanupTempFolder = true;
+			}
+
 			using (var writer = new StreamWriter("Songs-Renamed-" + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + ".txt"))
 			{
 				foreach (var filePathAndName in fileNames)
@@ -72,7 +80,16 @@ namespace DLCRenamer
 
 					var filePath = Path.GetDirectoryName(filePathAndName) + "\\";
 
-					var unpackedDir = Packer.Unpack(filePathAndName, workingDirectory, false, false, false);
+					string unpackedDir;
+					try
+					{
+						unpackedDir = Packer.Unpack(filePathAndName, WorkingFolder, false, false, false);
+					}
+					catch (Exception ex)
+					{
+						LogErrorMessage(filePathAndName, "unpacker error", ex, writer);
+						continue;
+					}
 
 					Attributes2014 attrs = null;
 					var jsonFiles = Directory.GetFiles(unpackedDir, String.Format("*.json"), SearchOption.AllDirectories);
@@ -145,6 +162,11 @@ namespace DLCRenamer
 					{
 						LogErrorMessage(filePathAndName, newFileName, ex, writer);
 					}
+				}
+
+				if (cleanupTempFolder && IsDirectoryEmpty(WorkingFolder))
+				{
+					Directory.Delete(WorkingFolder);
 				}
 			}
 		}
@@ -267,6 +289,11 @@ namespace DLCRenamer
 				? Directory.GetFiles(dir, "*_p.psarc", SearchOption.AllDirectories)
 				: Directory.GetFiles(dir, "*_p.psarc");
 			return fileNames;
+		}
+
+		private static bool IsDirectoryEmpty(string path)
+		{
+			return !Directory.EnumerateFileSystemEntries(path).Any();
 		}
 
 		//from: http://stackoverflow.com/questions/329355/cannot-delete-directory-with-directory-deletepath-true
