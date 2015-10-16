@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("DLCRenamer")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("CDLCRenamer")]
+[assembly: AssemblyDescription("Renames Rocksmith 2014 CDLC files")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
-[assembly: AssemblyProduct("DLCRenamer")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2014")]
+[assembly: AssemblyCompany("Ken Adams")]
+[assembly: AssemblyProduct("CDLCRenamer")]
+[assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

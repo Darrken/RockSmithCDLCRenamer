@@ -9,7 +9,7 @@ using RocksmithToolkitLib.DLCPackage;
 using RocksmithToolkitLib.DLCPackage.Manifest;
 using RocksmithToolkitLib.Extensions;
 
-namespace DLCRenamer
+namespace CDLCRenamer
 {
 	class Program
 	{
@@ -23,7 +23,8 @@ namespace DLCRenamer
 		private static bool _padVersion;
 		private static bool _overrideCleanName;
 		private static bool _includeSubfolders = true;
-		
+		private static bool _enableLogging;
+
 		static void Main()
 		{
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
@@ -39,9 +40,9 @@ namespace DLCRenamer
 
 		static void GetOptions()
 		{
-			if (!File.Exists("DLCRenamerOptions.txt")) return;
+			if (!File.Exists("options.ini")) return;
 
-			var options = File.ReadAllLines("DLCRenamerOptions.txt");
+			var options = File.ReadAllLines("options.ini");
 
 			foreach (var option in options.Where(line => !line.StartsWith("#")))
 			{
@@ -59,6 +60,8 @@ namespace DLCRenamer
 					_overrideCleanName = true;
 				if (option.Contains("Include-Subfolders:") && option.ToLower().Contains("false"))
 					_includeSubfolders = false;
+				if (option.Contains("Enable-Logging:") && option.ToLower().Contains("true"))
+					_enableLogging = true;
 			}
 		}
 
@@ -71,56 +74,63 @@ namespace DLCRenamer
 				cleanupTempFolder = true;
 			}
 
-			using (var writer = new StreamWriter("Songs-Renamed-" + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + ".txt"))
+			var writer = StreamWriter.Null;
+
+			if (_enableLogging)
 			{
-				foreach (var filePathAndName in fileNames)
+				writer = new StreamWriter("Songs-Renamed-" + DateTime.Now.Month + DateTime.Now.Day + DateTime.Now.Hour + DateTime.Now.Minute + ".txt");
+			}
+
+			foreach (var filePathAndName in fileNames)
+			{
+				if (!filePathAndName.IsValidPSARC()) continue;
+				if (filePathAndName.Contains("rs1compat")) continue;
+
+				var filePath = Path.GetDirectoryName(filePathAndName) + "\\";
+
+				string unpackedDir;
+				try
 				{
-					if (!filePathAndName.IsValidPSARC()) continue;
-					if (filePathAndName.Contains("rs1compat")) continue;
+					unpackedDir = Packer.Unpack(filePathAndName, WorkingFolder, false, false, false);
+				}
+				catch (Exception ex)
+				{
+					LogErrorMessage(filePathAndName, "unpacker error", ex, writer);
+					continue;
+				}
 
-					var filePath = Path.GetDirectoryName(filePathAndName) + "\\";
+				Attributes2014 attrs = null;
+				var jsonFiles = Directory.GetFiles(unpackedDir, "*.json", SearchOption.AllDirectories);
+				if (jsonFiles.Length > 0 && !String.IsNullOrEmpty(jsonFiles[0]))
+					attrs = Manifest2014<Attributes2014>.LoadFromFile(jsonFiles[0]).Entries.ToArray()[0].Value.ToArray()[0].Value;
 
-					string unpackedDir;
-					try
-					{
-						unpackedDir = Packer.Unpack(filePathAndName, WorkingFolder, false, false, false);
-					}
-					catch (Exception ex)
-					{
-						LogErrorMessage(filePathAndName, "unpacker error", ex, writer);
-						continue;
-					}
+				if (attrs == null) continue;
 
-					Attributes2014 attrs = null;
-					var jsonFiles = Directory.GetFiles(unpackedDir, String.Format("*.json"), SearchOption.AllDirectories);
-					if (jsonFiles.Length > 0 && !String.IsNullOrEmpty(jsonFiles[0]))
-						attrs = Manifest2014<Attributes2014>.LoadFromFile(jsonFiles[0]).Entries.ToArray()[0].Value.ToArray()[0].Value;
+				var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(filePathAndName);
 
-					if (attrs == null) continue;
+				var dynamicDifficulty = _useMetadataDd
+					? GetDynamicDifficultyFromMetadata(attrs)
+					: GetDynamicDifficultyFromFileName(filePathAndName);
 
-					var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(filePathAndName);
+				var newFileName = _overrideCleanName
+					? GetFileNameSafeString(attrs.ArtistNameSort).Replace(" ", _spaceSeparator) +
+					  _artistSongSeparator +
+					  GetFileNameSafeString(attrs.SongNameSort).Replace(" ", _spaceSeparator) +
+					  version +
+					  dynamicDifficulty +
+					  "_p.psarc"
+					: attrs.ArtistNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
+					  _artistSongSeparator +
+					  attrs.SongNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
+					  version +
+					  dynamicDifficulty +
+					  "_p.psarc";
 
-					var dynamicDifficulty = _useMetadataDd
-						? GetDynamicDifficultyFromMetadata(attrs)
-						: GetDynamicDifficultyFromFileName(filePathAndName);
+				var artist = attrs.ArtistName;
+				var song = attrs.SongName;
 
-					var newFileName = _overrideCleanName
-						? GetFileNameSafeString(attrs.ArtistNameSort).Replace(" ", _spaceSeparator) +
-						  _artistSongSeparator +
-						  GetFileNameSafeString(attrs.SongNameSort).Replace(" ", _spaceSeparator) +
-						  version +
-						  dynamicDifficulty +
-						  "_p.psarc"
-						: attrs.ArtistNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
-						  _artistSongSeparator +
-						  attrs.SongNameSort.GetValidName(true, true).Replace(" ", _spaceSeparator) +
-						  version +
-						  dynamicDifficulty +
-						  "_p.psarc";
-
-					var artist = attrs.ArtistName;
-					var song = attrs.SongName;
-
+				if (_enableLogging)
+				{
 					writer.WriteLine("Old Filename: " + filePathAndName);
 					writer.WriteLine("New Filename: " + filePath + newFileName);
 					writer.WriteLine("      Artist: " + artist);
@@ -131,52 +141,57 @@ namespace DLCRenamer
 					writer.WriteLine("     Meta DD: " + (attrs.MaxPhraseDifficulty > 0));
 					writer.WriteLine("  DLC Author: " + GetAuthorFromMetadata(unpackedDir));
 					writer.WriteLine();
+				}
 
-					try
-					{
-						DeleteDirectory(unpackedDir);
+				try
+				{
+					DeleteDirectory(unpackedDir);
 
-						File.Move(filePathAndName, filePath + newFileName);
-						Console.WriteLine(Path.GetFileName(filePathAndName) + @" -> " + newFileName);
-					}
-					catch (IOException ex)
+					File.Move(filePathAndName, filePath + newFileName);
+					Console.WriteLine(Path.GetFileName(filePathAndName) + @" -> " + newFileName);
+				}
+				catch (IOException ex)
+				{
+					if (ex.Message.Contains("Cannot create a file when that file already exists"))
 					{
-						if (ex.Message.Contains("Cannot create a file when that file already exists"))
+						newFileName = FileNameHelper.GetNextFileName(newFileName);
+						try
 						{
-							newFileName = FileNameHelper.GetNextFileName(newFileName);
-							try
-							{
-								File.Move(filePathAndName, filePath + newFileName);
-							}
-							catch (Exception exception)
-							{
-								LogErrorMessage(filePathAndName, newFileName, exception, writer);
-							}
+							File.Move(filePathAndName, filePath + newFileName);
 						}
-						else
+						catch (Exception exception)
 						{
-							LogErrorMessage(filePathAndName, newFileName, ex, writer);
+							LogErrorMessage(filePathAndName, newFileName, exception, writer);
 						}
 					}
-					catch (Exception ex)
+					else
 					{
 						LogErrorMessage(filePathAndName, newFileName, ex, writer);
 					}
 				}
-
-				if (cleanupTempFolder && IsDirectoryEmpty(WorkingFolder))
+				catch (Exception ex)
 				{
-					Directory.Delete(WorkingFolder);
+					LogErrorMessage(filePathAndName, newFileName, ex, writer);
 				}
+			}
+
+			writer.Dispose();
+
+			if (cleanupTempFolder && IsDirectoryEmpty(WorkingFolder))
+			{
+				Directory.Delete(WorkingFolder);
 			}
 		}
 
 		private static void LogErrorMessage(string fileName, string newFileName, Exception exception, TextWriter writer)
 		{
-			writer.WriteLine("Error encountered!");
-			writer.WriteLine(fileName + @" -> " + newFileName);
-			writer.WriteLine(exception.Message);
-			writer.WriteLine(exception.InnerException);
+			if (_enableLogging)
+			{
+				writer.WriteLine("Error encountered!");
+				writer.WriteLine(fileName + @" -> " + newFileName);
+				writer.WriteLine(exception.Message);
+				writer.WriteLine(exception.InnerException);
+			}
 
 			Console.WriteLine(@"Error encountered!");
 			Console.WriteLine(Path.GetFileName(fileName) + @" -> " + newFileName);
@@ -236,7 +251,7 @@ namespace DLCRenamer
 		{
 			var version = "1";
 
-			if (!File.Exists(unpackedDir + "\\toolkit.version")) 
+			if (!File.Exists(unpackedDir + "\\toolkit.version"))
 				return _artistSongSeparator + "v" + version;
 
 			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
@@ -311,7 +326,7 @@ namespace DLCRenamer
 					return;  // good!
 				}
 				catch (IOException)
-				{ 
+				{
 					// System.IO.IOException: The directory is not empty
 					//System.Diagnostics.Debug.WriteLine("Gnomes prevent deletion of {0}! Applying magic dust, attempt #{1}.", destinationDir, gnomes);
 					Thread.Sleep(50);

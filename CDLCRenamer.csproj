@@ -7,8 +7,8 @@
     <ProjectGuid>{73685D1E-A8EB-48DE-BE8C-31134687B68F}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DLCRenamer</RootNamespace>
-    <AssemblyName>DLCRenamer</AssemblyName>
+    <RootNamespace>CDLCRenamer</RootNamespace>
+    <AssemblyName>CDLCRenamer</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <PublishUrl>publish\</PublishUrl>
@@ -103,9 +103,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="DLCRenamerOptions.txt">
+    <None Include="options.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
