@@ -18,8 +18,6 @@ namespace CDLCRenamer
 
 		private static string _artistSongSeparator = "_";
 		private static string _spaceSeparator = "-";
-		private static bool _useMetadataVersion;
-		private static bool _useMetadataDd;
 		private static bool _padVersion;
 		private static bool _overrideCleanName;
 		private static bool _includeSubfolders = true;
@@ -50,10 +48,6 @@ namespace CDLCRenamer
 					_artistSongSeparator = option.Replace("Artist-Song-Separator:", "").Trim().Replace("\"", "");
 				if (option.Contains("Space-Character:"))
 					_spaceSeparator = option.Replace("Space-Character:", "").Trim().Replace("\"", "");
-				if (option.Contains("Use-Metadata-Version:") && option.ToLower().Contains("true"))
-					_useMetadataVersion = true;
-				if (option.Contains("Use-Metadata-DD:") && option.ToLower().Contains("true"))
-					_useMetadataDd = true;
 				if (option.Contains("Zero-Pad-Version:") && option.ToLower().Contains("true"))
 					_padVersion = true;
 				if (option.Contains("Override-Clean-Name:") && option.ToLower().Contains("true"))
@@ -106,11 +100,9 @@ namespace CDLCRenamer
 
 				if (attrs == null) continue;
 
-				var version = _useMetadataVersion ? GetVersionFromMetadata(unpackedDir) : GetVersionFromFileName(filePathAndName);
+				var version = GetVersionFromFileName(filePathAndName);
 
-				var dynamicDifficulty = _useMetadataDd
-					? GetDynamicDifficultyFromMetadata(attrs)
-					: GetDynamicDifficultyFromFileName(filePathAndName);
+			    var dynamicDifficulty = GetDynamicDifficultyFromMetadata(attrs);
 
 				var newFileName = _overrideCleanName
 					? GetFileNameSafeString(attrs.ArtistNameSort).Replace(" ", _spaceSeparator) +
@@ -137,8 +129,7 @@ namespace CDLCRenamer
 					writer.WriteLine(" Artist Sort: " + attrs.ArtistNameSort);
 					writer.WriteLine("        Song: " + song);
 					writer.WriteLine("   Song Sort: " + attrs.SongNameSort);
-					writer.WriteLine("Meta Version: " + GetUnformattedVersionFromMetadata(unpackedDir));
-					writer.WriteLine("     Meta DD: " + (attrs.MaxPhraseDifficulty > 0));
+					writer.WriteLine("Dynamic Diff: " + (attrs.MaxPhraseDifficulty > 0));
 					writer.WriteLine("  DLC Author: " + GetAuthorFromMetadata(unpackedDir));
 					writer.WriteLine();
 				}
@@ -231,38 +222,6 @@ namespace CDLCRenamer
 			return author;
 		}
 
-		private static string GetUnformattedVersionFromMetadata(string unpackedDir)
-		{
-			var version = string.Empty;
-
-			if (!File.Exists(unpackedDir + "\\toolkit.version"))
-				return version;
-
-			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
-			foreach (var line in lines.Where(line => line.Contains("Package Version")))
-			{
-				version = line.Replace("Package Version:", "").Trim();
-			}
-
-			return version;
-		}
-
-		private static string GetVersionFromMetadata(string unpackedDir)
-		{
-			var version = "1";
-
-			if (!File.Exists(unpackedDir + "\\toolkit.version"))
-				return _artistSongSeparator + "v" + version;
-
-			var lines = File.ReadAllLines(unpackedDir + "\\toolkit.version");
-			foreach (var line in lines.Where(line => line.Contains("Package Version")))
-			{
-				version = line.Replace("Package Version:", "").Trim().Replace(".", "_");
-			}
-
-			return GetFormattedVersionString(version);
-		}
-
 		private static string GetVersionFromFileName(string fileName)
 		{
 			var version = "1";
@@ -285,11 +244,6 @@ namespace CDLCRenamer
 			}
 
 			return _artistSongSeparator + "v" + version;
-		}
-
-		private static string GetDynamicDifficultyFromFileName(string fileName)
-		{
-			return fileName.Contains("_DD") ? _artistSongSeparator + "DD" : string.Empty;
 		}
 
 		private static string GetDynamicDifficultyFromMetadata(Attributes2014 attr)
@@ -370,9 +324,7 @@ namespace CDLCRenamer
 				fileNamePart = actuals.Item1;
 
 				if (filePath != null)
-					result = string.Format("{0} ({1}){2}",
-						Path.Combine(filePath, fileNamePart),
-						++currentCount, extensionPart);
+					result = $"{Path.Combine(filePath, fileNamePart)} ({++currentCount}){extensionPart}";
 			}
 
 			return Path.GetFileName(result);
