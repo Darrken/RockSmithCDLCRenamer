@@ -44,6 +44,6 @@ and clicking the "Generate" button to create a new, fixed file.
 Options
 =======
 
-You can modify the options.ini file to customize the separators in the filename.  For example, you may prefer an actual space instead of the "_" character.
+You can modify the options.ini file to customize how your files are renamed.  For example, you may prefer an actual space instead of the "_" character between words.  You can also "zero-pad" the version number, so "v1" will become "v1_0".
 
 <strong>I highly recommend backing up first, and experimenting on the backup set/subset of your files!</strong>
